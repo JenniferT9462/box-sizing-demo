@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Box-sizing Demo</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 32px 16px;
+      font-family: Inter, Arial, sans-serif;
+      background: #fffcf9;
+      color: #1e293b;
+      text-align: center;
+    }
+    h1 { color: #4e89bd; margin: 0 0 8px; font-size: 1.8rem; }
+    .step { color: #64748b; margin: 0 0 24px; }
+
+    /* The "section" the input lives in: exactly 400px */
+    .section {
+      box-sizing: content-box;          /* inside is exactly 400px */
+      width: 400px;
+      max-width: 100%;
+      margin: 0 auto;
+      padding: 0;
+      border: 3px dashed #4e89bd;
+      height: 140px;
+      position: relative;
+      text-align: left;
+    }
+    .section-label {
+      position: absolute;
+      top: -26px;
+      left: 0;
+      font-weight: bold;
+      color: #4e89bd;
+      font-size: 0.9rem;
+    }
+    /* The fake input. Its sizing is switched by JS */
+    .input {
+      margin-top: 40px;
+      height: 60px;
+      width: 100%;
+      padding: 0 40px;
+      border: 10px solid #1e293b;
+      background: #c3e6c3;            /* padding = green, like DevTools */
+      background-clip: padding-box;
+      position: relative;
+      transition: width 0.6s;
+    }
+    .input.content-box { box-sizing: content-box; }
+    .input .content {
+      background: #a8c8ec;            /* content = blue, like DevTools */
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    .overflow {
+      color: #c0392b;
+      font-weight: bold;
+      min-height: 1.5em;
+      margin: 16px 0 0;
+    }
+
+    .math {
+      font-family: Consolas, monospace;
+      font-size: 1.25rem;
+      margin: 28px auto 0;
+      min-height: 1.6em;
+    }
+    .caption {
+      max-width: 620px;
+      margin: 20px auto;
+      font-size: 1.35rem;
+      line-height: 1.5;
+      min-height: 4.5em;
+    }
+    .code {
+      display: inline-block;
+      font-family: Consolas, monospace;
+      background: #fff;
+      border: 2px solid #4e89bd;
+      border-radius: 8px;
+      padding: 8px 16px;
+      min-height: 1.6em;
+    }
+    .controls { margin-top: 24px; }
+    button {
+      font: inherit;
+      font-size: 1.1rem;
+      padding: 10px 24px;
+      margin: 0 6px;
+      border-radius: 8px;
+      border: 2px solid #4e89bd;
+      background: #4e89bd;
+      color: #fff;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.4; cursor: default; }
+    #back { background: #fff; color: #4e89bd; }
+    .key { margin-top: 20px; font-size: 0.95rem; color: #64748b; }
+    .swatch { display: inline-block; width: 14px; height: 14px; vertical-align: middle; margin: 0 4px 0 12px; border: 1px solid #1e293b; }
+  </style>
+</head>
+<body>
+  <h1>Why is my box too wide?</h1>
+  <p class="step" id="step">Screen 1 of 5</p>
+
+  <div class="section">
+    <span class="section-label">section: 400px wide</span>
+    <div class="input content-box" id="input">
+      <div class="content" id="content">content</div>
+    </div>
+  </div>
+  <p class="overflow" id="overflow"></p>
+
+  <p class="math" id="math"></p>
+  <p class="caption" id="caption"></p>
+  <div class="code" id="code"></div>
+
+  <div class="controls">
+    <button id="back">← Back</button>
+    <button id="next">Next →</button>
+  </div>
+  <p class="key">
+    <span class="swatch" style="background:#a8c8ec"></span>content
+    <span class="swatch" style="background:#c3e6c3"></span>padding
+    <span class="swatch" style="background:#1e293b"></span>border
+  </p>
+
+  <script>
+    let screens = [
+      {
+        sizing: "none",
+        math: "",
+        caption: "The dashed box is our section. It is 400 pixels wide. We want the input to fill it exactly.",
+        code: "input { width: 100%; }"
+      },
+      {
+        sizing: "content-box",
+        math: "content = 400",
+        caption: "width: 100% gives the content 400 pixels. So far so good. But CSS isn't finished.",
+        code: "width: 100%;"
+      },
+      {
+        sizing: "content-box",
+        math: "400 + 40 + 40 + 10 + 10 = 500",
+        caption: "CSS adds the padding and the border on the outside. 400, plus 40 padding on each side, plus 10 border on each side. Now the box is 500 wide. It sticks out!",
+        code: "width: 100%;  padding: 0 40px;  border: 10px solid;"
+      },
+      {
+        sizing: "border-box",
+        math: "300 + 40 + 40 + 10 + 10 = 400",
+        caption: "With border-box, the width includes the padding and the border. The content just gets smaller to make room. 100% really means 100%.",
+        code: "* { box-sizing: border-box; }"
+      },
+      {
+        sizing: "border-box",
+        math: "",
+        caption: "So we put this rule at the top of every style.css. The star means every element. Almost every real website starts with it.",
+        code: "* { box-sizing: border-box; }"
+      }
+    ];
+
+    let current = 0;
+    let input = document.querySelector("#input");
+    let content = document.querySelector("#content");
+
+    function show() {
+      let screen = screens[current];
+      document.querySelector("#step").textContent = "Screen " + (current + 1) + " of " + screens.length;
+      document.querySelector("#math").textContent = screen.math;
+      document.querySelector("#caption").textContent = screen.caption;
+      document.querySelector("#code").textContent = screen.code;
+
+      input.style.visibility = screen.sizing === "none" ? "hidden" : "visible";
+      // Screen 2 shows the content only, before padding and border appear
+      if (current === 1) {
+        input.style.padding = "0";
+        input.style.borderWidth = "0";
+      } else {
+        input.style.padding = "";
+        input.style.borderWidth = "";
+      }
+      input.classList.toggle("content-box", screen.sizing === "content-box");
+      content.textContent = screen.sizing === "border-box" ? "content (300)" : "content (400)";
+      document.querySelector("#overflow").textContent = current === 2 ? "→ 100px too wide" : "";
+
+      document.querySelector("#back").disabled = current === 0;
+      document.querySelector("#next").disabled = current === screens.length - 1;
+    }
+
+    function next() {
+      if (current < screens.length - 1) { current = current + 1; show(); }
+    }
+    function back() {
+      if (current > 0) { current = current - 1; show(); }
+    }
+
+    document.querySelector("#next").addEventListener("click", next);
+    document.querySelector("#back").addEventListener("click", back);
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "ArrowRight") { next(); }
+      if (event.key === "ArrowLeft") { back(); }
+    });
+
+    // Optional: box-sizing-demo.html#3 opens on screen 3
+    let start = parseInt(location.hash.slice(1));
+    if (start >= 1 && start <= screens.length) { current = start - 1; }
+
+    show();
+  </script>
+</body>
+</html>
